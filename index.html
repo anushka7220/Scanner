@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Anushka – Project Scanner Portfolio</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="style.css" />
+    <!-- QR scanner library (CDN) -->
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="projects.js" defer></script>
+    <script defer>
+        // --- Simple router using ?id=project-id ---
+        function getProjectIdFromUrl() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get("id");
+        }
+
+        function renderProjectList() {
+            const app = document.getElementById("app");
+            app.innerHTML = `
+      <header class="hero">
+        <div>
+          <h1>Anushka Sharma</h1>
+          <p class="subtitle">QR-enabled project portfolio</p>
+          <div class="hero-buttons">
+            <a href="#scan" id="openScannerBtn" class="btn secondary">
+              📷 Scan project QR
+            </a>
+          </div>
+        </div>
+      </header>
+      <section class="section">
+        <h2>Projects</h2>
+        <div class="grid" id="projectGrid"></div>
+      </section>
+      <section class="section" id="scannerSection" style="display:none;">
+        <h2>Scan a QR Code</h2>
+        <p class="hint">
+          Point your camera at any project QR on my resume or project model.
+        </p>
+        <div id="qrReader"></div>
+        <button id="closeScannerBtn" class="btn ghost">Close Scanner</button>
+      </section>
+    `;
+
+            // Render cards
+            const grid = document.getElementById("projectGrid");
+            grid.innerHTML = PROJECTS.map(p => `
+      <article class="card">
+        <div class="thumb">
+          ${p.images && p.images[0]
+                    ? `<img src="${p.images[0]}" alt="${p.title}" />`
+                    : `<div class="placeholder-thumb">${p.title[0]}</div>`}
+        </div>
+        <div class="card-body">
+          <h3>${p.title}</h3>
+          <p class="tagline">${p.tagline}</p>
+          <p class="meta">${p.year} · ${p.tech.slice(0, 3).join(" · ")}</p>
+          <a href="?id=${p.id}" class="btn small">View details</a>
+        </div>
+      </article>
+    `).join("");
+
+            // Scanner logic
+            const openBtn = document.getElementById("openScannerBtn");
+            const closeBtn = document.getElementById("closeScannerBtn");
+            const scannerSection = document.getElementById("scannerSection");
+            let qrScanner = null;
+
+            function startScanner() {
+                scannerSection.style.display = "block";
+                if (!qrScanner) {
+                    qrScanner = new Html5Qrcode("qrReader");
+                    qrScanner.start(
+                        { facingMode: "environment" },
+                        { fps: 10, qrbox: 250 },
+                        decodedText => {
+                            window.location.href = decodedText;
+                        },
+                        errorMessage => {
+                            // ignore scan errors
+                        }
+                    ).catch(err => {
+                        alert("Could not start camera: " + err);
+                    });
+                }
+            }
+
+            function stopScanner() {
+                if (qrScanner) {
+                    qrScanner.stop().then(() => {
+                        qrScanner.clear();
+                        qrScanner = null;
+                    }).catch(() => { });
+                }
+                scannerSection.style.display = "none";
+            }
+
+            if (openBtn) {
+                openBtn.addEventListener("click", (e) => {
+                    e.preventDefault();
+                    startScanner();
+                });
+            }
+
+            if (closeBtn) {
+                closeBtn.addEventListener("click", () => {
+                    stopScanner();
+                });
+            }
+
+            if (window.location.hash === "#scan") {
+                startScanner();
+            }
+        }
+
+        function renderProjectDetail(projectId) {
+
+            const project = PROJECTS.find(p => p.id === projectId);
+            const app = document.getElementById("app");
+
+            if (!project) {
+                app.innerHTML = `
+        <section class="section">
+          <p>Project not found.</p>
+          <a href="./" class="btn">Back to all projects</a>
+        </section>
+      `;
+                return;
+            }
+
+            const allImages = [
+                ...(project.images || []),
+                ...(project.more_images || [])
+            ];
+
+            app.innerHTML = `
+      <header class="hero">
+        <div>
+          <a href="./" class="back-link">← All projects</a>
+          <h1>${project.title}</h1>
+          <p class="subtitle">${project.tagline}</p>
+          <p class="meta">${project.year} · ${project.tech.join(" · ")}</p>
+        </div>
+      </header>
+
+      <section class="section project-layout">
+        <div class="project-main">
+          <h2>What this project does</h2>
+          <p>${project.summary}</p>
+
+          <h3>My role</h3>
+          <p>${project.role}</p>
+
+          ${allImages.length ? `
+            <h3>Project images</h3>
+            <div class="image-slider">
+              <div class="slider-main">
+                <img class="slider-image" src="${allImages[1]}" alt="${project.title} image" />
+              </div>
+              <div class="slider-controls">
+                <button class="btn small ghost slider-prev">‹ Prev</button>
+                <span class="slider-counter">1 / ${allImages.length}</span>
+                <button class="btn small ghost slider-next">Next ›</button>
+              </div>
+            </div>
+          ` : ""}
+
+          <div class="links">
+            ${project.github ? `<a href="${project.github}" target="_blank" class="btn small">View code</a>` : ""}
+            ${project.live ? `<a href="${project.live}" target="_blank" class="btn small secondary">Live demo</a>` : ""}
+          </div>
+        </div>
+
+        <aside class="project-sidebar">
+          <h3>All screenshots</h3>
+          <div class="gallery">
+            ${project.images && project.images.length
+                    ? project.images.map(src => `<img src="${src}" alt="${project.title} screenshot" />`).join("")
+                    : "<p>No images yet.</p>"
+                }
+          </div>
+        </aside>
+        <div class="links">
+                ${project.github ? `<a href="${project.github}" target="_blank" class="btn small">View code</a>` : ""}
+                ${project.live ? `<a href="${project.live}" target="_blank" class="btn small secondary">Live demo</a>` : ""}
+                ${project.document ? `<a href="${project.document}" target="_blank" class="btn small">View Report</a>` : ""}
+            </div>
+      </section>
+    `;
+
+            if (allImages.length) {
+                let current = 0;
+                const imgEl = document.querySelector(".slider-image");
+                const counterEl = document.querySelector(".slider-counter");
+                const prevBtn = document.querySelector(".slider-prev");
+                const nextBtn = document.querySelector(".slider-next");
+
+                function updateSlider() {
+                    imgEl.src = allImages[current];
+                    counterEl.textContent = (current + 1) + " / " + allImages.length;
+                }
+
+                prevBtn.addEventListener("click", () => {
+                    current = (current - 1 + allImages.length) % allImages.length;
+                    updateSlider();
+                });
+
+                nextBtn.addEventListener("click", () => {
+                    current = (current + 1) % allImages.length;
+                    updateSlider();
+                });
+            }
+        }
+
+        window.addEventListener("DOMContentLoaded", () => {
+            const projectId = getProjectIdFromUrl();
+            if (projectId) {
+                renderProjectDetail(projectId);
+            } else {
+                renderProjectList();
+            }
+        });
+    </script>
+
+</head>
+
+<body>
+    <div id="app"></div>
+</body>
+
+</html>
